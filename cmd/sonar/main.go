@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/olivere/elastic/v7"
 )
@@ -68,7 +69,7 @@ func main() {
 	var index, filename string
 	var batchSize int
 
-	flag.IntVar(&batchSize, "", 10000, "")
+	flag.IntVar(&batchSize, "batch-size", 10000, "")
 	flag.StringVar(&filename, "file", "2021-02-26-1614298129-fdns_any.json.gz", "")
 	flag.StringVar(&index, "index", "sonar", "")
 	flag.Parse()
@@ -97,6 +98,7 @@ func main() {
 		panic(err)
 	}
 	if !exists {
+		log.Printf("Creating index")
 		// Create a new index.
 		createIndex, err := client.CreateIndex(index).BodyString(mapping).Do(ctx)
 		if err != nil {
@@ -118,9 +120,35 @@ func main() {
 		log.Fatalf("new reader %s", err)
 	}
 
-	dec := json.NewDecoder(reader)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 
-	bulk := client.Bulk()
+	recv := make(chan Sonar, batchSize)
+	go func() {
+		bulk := client.Bulk()
+		for {
+			m, isOpen := <-recv
+
+			bulk.Add(elastic.NewBulkIndexRequest().OpType("index").Index(index).Type("_doc").Doc(m))
+
+			if bulk.NumberOfActions() == batchSize || !isOpen {
+				_, err = bulk.Do(ctx)
+				if err != nil {
+					log.Fatalf("bulk %s", err)
+				}
+				if !isOpen {
+					log.Printf("Last chunk processed ...")
+					wg.Done()
+					return
+				}
+
+				bulk = client.Bulk()
+			}
+		}
+	}()
+
+	log.Printf("Reading stream")
+	dec := json.NewDecoder(reader)
 	// while the array contains values
 	for dec.More() {
 		var m Sonar
@@ -130,9 +158,6 @@ func main() {
 			log.Fatal(err)
 		}
 		switch m.Type {
-		// Intentionally skipped
-		case "hinfo", "rsig", "rrsig", "ds", "cds", "caa", "wks", "dnskey", "cdnskey", "spf", "tlsa", "nsec3param", "sshfp", "any":
-			continue
 		case "a", "aaaa":
 			m.Address, m.Value = m.Value, ""
 
@@ -147,10 +172,10 @@ func main() {
 			m.Priority = int(priority)
 			m.Value = values[1]
 
+		// Intentionally skipped
 		default:
-			if !strings.HasPrefix(m.Type, "unk_in_") {
-				log.Printf("skipping unkown type %s", m.Type)
-			}
+			// "hinfo", "rsig", "rrsig", "ds", "cds", "caa", "wks", "dnskey", "cdnskey", "spf", "tlsa", "nsec3param", "sshfp", "any":
+			continue
 		}
 
 		// Skip empty records
@@ -158,15 +183,10 @@ func main() {
 			continue
 		}
 
-		indexReq := elastic.NewBulkIndexRequest().OpType("index").Index(index).Type("_doc").Doc(m)
-		bulk.Add(indexReq)
-
-		if bulk.NumberOfActions() == batchSize {
-			_, err = bulk.Do(ctx)
-			if err != nil {
-				log.Fatalf("bulk %s", err)
-			}
-			bulk = client.Bulk()
-		}
+		recv <- m
 	}
+
+	close(recv)
+	log.Printf("waiting for insert thread to finish")
+	wg.Wait()
 }
