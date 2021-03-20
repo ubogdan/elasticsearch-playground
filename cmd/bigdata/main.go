@@ -47,9 +47,9 @@ const mapping = `
 				"value":{
 					"type":"keyword"
 				},
-      			"address": {
-        			"type": "ip"
-      			}
+				"address":{
+					"type":"ip"
+				}
 			}
 	}
 }`
@@ -61,14 +61,16 @@ type Sonar struct {
 	Weight   int    `json:"weight,omitempty"`
 	Port     int    `json:"port,omitempty"`
 	Value    string `json:"value"`
-	Address  string `json:"address,omitempty"`
+	Address  string `json:"address"`
 }
 
 func main() {
-	var index,file string
-	
-	flag.StringVar(&file,"file","2021-02-27-1614388801-fdns_mx.json.gz","")
-	flag.StringVar(&index, "index", "sonar2", "")
+	var index, filename string
+	var batchSize int
+
+	flag.IntVar(&batchSize, "", 10000, "")
+	flag.StringVar(&filename, "file", "2021-02-26-1614298129-fdns_any.json.gz", "")
+	flag.StringVar(&index, "index", "sonar", "")
 	flag.Parse()
 
 	// Starting with elastic.v5, you must pass a context to execute each service
@@ -106,7 +108,7 @@ func main() {
 		}
 	}
 
-	file, err := os.Open(file)
+	file, err := os.Open(filename)
 	if err != nil {
 		log.Fatalf("open %s", err)
 	}
@@ -117,7 +119,7 @@ func main() {
 	}
 
 	dec := json.NewDecoder(reader)
-	n := 0
+
 	bulk := client.Bulk()
 	// while the array contains values
 	for dec.More() {
@@ -127,23 +129,39 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		n += 1
 		switch m.Type {
+		// Intentionally skipped
+		case "hinfo", "rsig", "rrsig", "ds", "cds", "caa", "wks", "dnskey", "cdnskey", "spf", "tlsa", "nsec3param", "sshfp", "any":
+			continue
+		case "a", "aaaa":
+			m.Address, m.Value = m.Value, ""
+
+		case "ns", "ptr", "soa", "cname", "srv", "txt":
 		case "mx":
 			values := strings.Split(m.Value, " ")
-			priority,err := strconv.ParseInt(values[0],10,32)
+			priority, err := strconv.ParseInt(values[0], 10, 32)
 			if err != nil {
-				log.Printf("mx: parseInt %s",err)
+				log.Printf("mx: parseInt %s", err)
 				continue
 			}
 			m.Priority = int(priority)
 			m.Value = values[1]
+
+		default:
+			if !strings.HasPrefix(m.Type, "unk_in_") {
+				log.Printf("skipping unkown type %s", m.Type)
+			}
 		}
 
-		indexReq := elastic.NewBulkIndexRequest().OpType("create").Index(index).Id(strconv.Itoa(n)).Type("_doc").Doc(m)
+		// Skip empty records
+		if m.Value == "" && m.Address == "" {
+			continue
+		}
+
+		indexReq := elastic.NewBulkIndexRequest().OpType("index").Index(index).Type("_doc").Doc(m)
 		bulk.Add(indexReq)
 
-		if bulk.NumberOfActions() == 1000 {
+		if bulk.NumberOfActions() == batchSize {
 			_, err = bulk.Do(ctx)
 			if err != nil {
 				log.Fatalf("bulk %s", err)
