@@ -60,8 +60,8 @@ type Sonar struct {
 	Priority int    `json:"priority,omitempty"`
 	Weight   int    `json:"weight,omitempty"`
 	Port     int    `json:"port,omitempty"`
-	Value    string `json:"value"`
-	Address  string `json:"address"`
+	Value    string `json:"value,omitempty"`
+	Address  string `json:"address,omitempty"`
 }
 
 func main() {
