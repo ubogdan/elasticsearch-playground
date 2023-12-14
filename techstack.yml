@@ -1,11 +1,11 @@
 repo_name: ubogdan/elasticsearch-playground
-report_id: 9b72996528f83443d5f39f210f6ea1d8
+report_id: 72fe2eb311c83ec31452fef564951d47
 repo_type: Public
-timestamp: '2023-11-09T21:29:08+00:00'
+timestamp: '2023-12-14T09:58:41+00:00'
 requested_by: ubogdan
 provider: github
 branch: main
-detected_tools_count: 6
+detected_tools_count: 9
 tools:
 - name: Golang
   description: An open source programming language that makes it easy to build simple,
@@ -18,6 +18,18 @@ tools:
   sub_category: Languages
   image_url: https://img.stackshare.io/service/1005/O6AczwfV_400x400.png
   detection_source: Repo Metadata
+- name: Node.js
+  description: A platform built on Chrome's JavaScript runtime for easily building
+    fast, scalable network applications
+  website_url: http://nodejs.org/
+  open_source: true
+  hosted_saas: false
+  category: Languages & Frameworks
+  sub_category: Frameworks (Full Stack)
+  image_url: https://img.stackshare.io/service/1011/n1JRsFeB_400x400.png
+  detection_source: elk/docker-compose.yml
+  last_updated_by: Bogdan U
+  last_updated_on: 2021-03-16 14:33:15.000000000 Z
 - name: Docker
   description: Enterprise Container Platform for High-Velocity Innovation.
   website_url: https://www.docker.com/
@@ -59,13 +71,45 @@ tools:
   detection_source: elk/config/elasticsearch.yml
   last_updated_by: Bogdan U
   last_updated_on: 2021-03-16 14:33:15.000000000 Z
-- name: Shell
-  description: A shell is a text-based terminal, used for manipulating programs and
-    files. Shell scripts typically manage program execution.
-  website_url: https://en.wikipedia.org/wiki/Shell_script
-  open_source: false
+- name: easyjson
+  description: Fast JSON serializer for golang
+  package_url: https://pkg.go.dev/github.com/mailru/easyjson
+  version: 0.7.6
+  license: MIT
+  open_source: true
   hosted_saas: false
-  category: Languages & Frameworks
-  sub_category: Languages
-  image_url: https://img.stackshare.io/service/4631/default_c2062d40130562bdc836c13dbca02d318205a962.png
-  detection_source: Repo Metadata
+  category: Libraries
+  sub_category: Go Modules Packages
+  image_url: https://img.stackshare.io/package/go-packages/image.png
+  detection_source_url: https://github.com/ubogdan/elasticsearch-playground/blob/main/go.sum
+  detection_source: go.mod
+  last_updated_by: Bogdan U
+  last_updated_on: 2021-03-16 16:03:32.000000000 Z
+- name: elastic
+  description: Elasticsearch client for Go
+  package_url: https://pkg.go.dev/github.com/olivere/elastic
+  version: 1.0.1
+  license: MIT
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Go Modules Packages
+  image_url: https://img.stackshare.io/package/go-packages/image.png
+  detection_source_url: https://github.com/ubogdan/elasticsearch-playground/blob/main/go.sum
+  detection_source: go.mod
+  last_updated_by: Bogdan U
+  last_updated_on: 2021-03-16 16:03:32.000000000 Z
+- name: errors
+  description: Simple error handling primitives
+  package_url: https://pkg.go.dev/github.com/pkg/errors
+  version: 0.9.1
+  license: BSD-2-Clause
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Go Modules Packages
+  image_url: https://img.stackshare.io/package/go-packages/image.png
+  detection_source_url: https://github.com/ubogdan/elasticsearch-playground/blob/main/go.sum
+  detection_source: go.mod
+  last_updated_by: Bogdan U
+  last_updated_on: 2021-03-16 16:03:32.000000000 Z
